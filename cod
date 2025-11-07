@@ -1,0 +1,113 @@
+// ==UserScript==
+// @name         Remote Activation Loader with Password Window
+// @namespace    http://tampermonkey.net/
+// @version      1.6
+// @description  Run script if activation = 1 or password entered via small window
+// @match        *://kour.io/*
+// @grant        GM_xmlhttpRequest
+// @grant        unsafeWindow
+// @connect      raw.githubusercontent.com
+// ==/UserScript==
+
+(function () {
+    "use strict";
+
+    const FLAG_URL   = "https://raw.githubusercontent.com/kirforsizero-sys/license/refs/heads/main/activate";
+    const SCRIPT_URL = "https://raw.githubusercontent.com/kirforsizero-sys/license/refs/heads/main/code";
+
+    GM_xmlhttpRequest({
+        method: "GET",
+        url: FLAG_URL + "?t=" + Date.now(),
+        onload: function (response) {
+            const raw = (response.responseText || "").trim();
+            const parts = raw.split("\n").map(s => s.trim()).filter(Boolean);
+            const flag = parts[0];       // first line = 0 or 1
+            const passwords = parts[1] ? parts[1].split(",").map(p => p.trim()) : [];
+
+            if (flag === "1") {
+                fetchAndRun();
+            } else {
+                createPasswordWindow(passwords);
+            }
+        },
+        onerror: function (err) {
+            console.error("[Remote Loader] ⚠️ Не удалось получить флаг:", err);
+        }
+    });
+
+    function fetchAndRun() {
+        GM_xmlhttpRequest({
+            method: "GET",
+            url: SCRIPT_URL + "?t=" + Date.now(),
+            onload: function (res) {
+                try {
+                    new Function("unsafeWindow", res.responseText)(unsafeWindow);
+                    console.log("[Remote Loader] ✅ Main script выполнен успешно.");
+                } catch (e) {
+                    console.error("[Remote Loader] ❌ Ошибка выполнения скрипта:", e);
+                }
+            },
+            onerror: function (err) {
+                console.error("[Remote Loader] ❌ Не удалось получить главный скрипт:", err);
+            }
+        });
+    }
+
+    function createPasswordWindow(passwords) {
+        // create container
+        const div = document.createElement("div");
+        div.style.position = "fixed";
+        div.style.bottom = "20px";
+        div.style.right = "20px";
+        div.style.backgroundColor = "rgba(0,0,0,0.85)";
+        div.style.color = "white";
+        div.style.padding = "10px";
+        div.style.borderRadius = "8px";
+        div.style.zIndex = 999999;
+        div.style.fontFamily = "Arial, sans-serif";
+        div.style.boxShadow = "0 0 10px black";
+        div.style.pointerEvents = "auto"; // allow interaction
+
+        // text
+        const text = document.createElement("div");
+        text.innerText = "Скрипт отключен. Введите пароль:";
+        text.style.marginBottom = "5px";
+        div.appendChild(text);
+
+        // input
+        const input = document.createElement("input");
+        input.type = "text";
+        input.placeholder = "Пароль";
+        input.style.width = "120px";
+        input.style.marginRight = "5px";
+        input.style.pointerEvents = "auto"; // allow typing
+        input.tabIndex = 0;                  // make focusable
+        div.appendChild(input);
+
+        // prevent page scripts from blocking typing
+        input.addEventListener("keydown", e => e.stopPropagation());
+        input.addEventListener("keypress", e => e.stopPropagation());
+        input.addEventListener("keyup", e => e.stopPropagation());
+
+        // button
+        const btn = document.createElement("button");
+        btn.innerText = "Запустить";
+        btn.style.cursor = "pointer";
+        btn.onclick = () => {
+            const val = input.value.trim();
+            if (passwords.includes(val)) {
+                document.body.removeChild(div);
+                fetchAndRun();
+            } else {
+                alert("Неправильный пароль!");
+                input.value = "";
+                input.focus();
+            }
+        };
+        div.appendChild(btn);
+
+        document.body.appendChild(div);
+        input.focus(); // focus automatically
+    }
+
+})();
