@@ -1,9 +1,15 @@
 // ==UserScript==
-// @name         Kour.io ISK 3A Menu
+// @name         Kour.io Zeph Menu
 // @match        *://kour.io/*
+// @version      4.1
 // @author       Happyjeffery, Rasperiiii & suppress
+// @icon         https://i.imgur.com/11sYWVM.png
+// @description  Speed Hack, Invisibility, And many more. "Insert" to open menu.
+// @run-at       document-start
+// @grant        unsafeWindow
+// @namespace https://greasyfork.org/users/1369586
 // ==/UserScript==
-
+ 
 (function () {
     ("use strict");
 
